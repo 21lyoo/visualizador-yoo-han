@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Intereses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Café Calma -->
+    <!-- Application Structure Plan: Se ha diseñado una aplicación de una sola página con una estructura de herramienta de cálculo. La interfaz se divide en dos secciones principales: una para la entrada de datos (el monto de la compra) y otra, inicialmente oculta, para la visualización de los resultados. Esta última sección muestra los cálculos detallados y una visualización comparativa de la diferencia marginal de costo. Esta estructura guiada es ideal para que un empleado ingrese un valor y muestre rápidamente al cliente la diferencia, reforzando la transparencia. -->
+    <!-- Visualization & Content Choices: Report Info: Mostrar el impacto de un 5% y un 15% de interés. -> Goal: Comparar costos de forma tangible y mostrar una diferencia marginal por cuota. -> Viz/Presentation Method: Presentación de resultados numéricos detallados para 3 y 6 cuotas con interés, y una visualización simplificada que muestra el costo adicional por cuota en texto. -> Interaction: Un campo de entrada numérica para el monto y un botón para activar el cálculo y la visualización. -> Justification: El foco está en la claridad numérica y la simplicidad, eliminando la analogía visual para evitar confusiones yendo directo al grano con los valores monetarios exactos. -> Library/Method: Vanilla JS, HTML, Tailwind CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #A59E99;
+            box-shadow: 0 0 0 3px rgba(165, 158, 153, 0.3);
+        }
+        .button-primary {
+            transition: all 0.2s ease-in-out;
+        }
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .results-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .results-section.show {
+            display: block;
+            opacity: 1;
+        }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#FDFBF8] text-[#4F4A45]">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-[#6C5F5B]">Simulador de Cuotas</h1>
+            <p class="text-lg text-[#A59E99] mt-2">Muestra a tu cliente la diferencia marginal</p>
+        </header>
+
+        <main class="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+            <section class="mb-8">
+                <div class="input-group text-center">
+                    <label for="amount" class="block text-xl font-semibold mb-2 text-[#6C5F5B]">Monto total de la compra</label>
+                    <div class="relative w-full md:w-1/2 mx-auto">
+                      <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xl text-[#A59E99]">$</span>
+                      <input type="number" id="amount" class="w-full pl-8 p-3 text-center text-xl rounded-xl border-2 border-[#EAE7E1] bg-[#F7F1E5] text-[#4F4A45] placeholder-[#A59E99]" placeholder="15.000">
+                    </div>
+                    <button onclick="calculate()" class="button-primary mt-6 w-full md:w-1/2 bg-[#6C5F5B] text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-[#A59E99]">Calcular</button>
+                </div>
+            </section>
+
+            <section id="results" class="results-section">
+                <h2 class="text-2xl font-bold text-center mb-4 text-[#6C5F5B]">Análisis del Costo Total</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div class="bg-[#e6f7ff] p-6 rounded-xl border-t-4 border-[#1565C0] text-center">
+                        <h3 class="text-xl font-bold text-[#1565C0] mb-2">Cuotas SIN Interés</h3>
+                        <p class="text-3xl font-bold text-[#1565C0]" id="totalSinInteres"></p>
+                    </div>
+                    <div class="bg-[#e3f2fd] p-6 rounded-xl border-t-4 border-[#2196f3] text-center">
+                        <h3 class="text-xl font-bold text-[#1565C0] mb-2">3 Cuotas con 5% de Interés</h3>
+                        <p class="text-3xl font-bold text-[#1565C0]" id="totalCon5Interes"></p>
+                        <p class="mt-2 text-[#4F4A45]">en 3 cuotas de <span class="text-2xl font-bold text-[#1565C0]" id="cuotaCon5Interes"></span></p>
+                    </div>
+                    <div class="bg-[#f0f4c3] p-6 rounded-xl border-t-4 border-[#cddc39] text-center">
+                        <h3 class="text-xl font-bold text-[#827717] mb-2">6 Cuotas con 15% de Interés</h3>
+                        <p class="text-3xl font-bold text-[#827717]" id="totalCon15Interes"></p>
+                        <p class="mt-2 text-[#4F4A45]">en 6 cuotas de <span class="text-2xl font-bold text-[#827717]" id="cuotaCon15Interes"></span></p>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-4 bg-white rounded-lg shadow-inner text-center">
+                    <p class="text-lg font-semibold text-[#6C5F5B]">Costo adicional en 3 cuotas (5%): <span class="text-[#D32F2F]" id="diferencia3Total"></span></p>
+                    <p class="text-lg font-semibold text-[#6C5F5B]">Costo adicional en 6 cuotas (15%): <span class="text-[#D32F2F]" id="diferencia6Total"></span></p>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold text-center mb-4 text-[#6C5F5B]">Costo adicional por cuota</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-[#fcf7ec] p-6 rounded-xl border-t-4 border-[#D32F2F] text-center">
+                            <p class="text-lg font-semibold text-[#4F4A45] mb-4">Con 3 cuotas, pagas extra por mes:</p>
+                            <span id="costoExtra3Cuotas" class="text-2xl font-bold text-[#D32F2F]"></span>
+                        </div>
+                        <div class="bg-[#fcf7ec] p-6 rounded-xl border-t-4 border-[#D32F2F] text-center">
+                            <p class="text-lg font-semibold text-[#4F4A45] mb-4">Con 6 cuotas, pagas extra por mes:</p>
+                            <span id="costoExtra6Cuotas" class="text-2xl font-bold text-[#D32F2F]"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const totalSinInteresElem = document.getElementById('totalSinInteres');
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(amount);
+        }
+
+        function calculate() {
+            const amountInput = document.getElementById('amount');
+            const amount = parseFloat(amountInput.value);
+
+            if (isNaN(amount) || amount <= 0) {
+                amountInput.value = '';
+                document.getElementById('results').classList.remove('show');
+                return;
+            }
+
+            const totalCon5Interes = amount * 1.05;
+            const cuotaCon5Interes = totalCon5Interes / 3;
+            const totalCon15Interes = amount * 1.15;
+            const cuotaCon15Interes = totalCon15Interes / 6;
+
+            const diferencia3Total = totalCon5Interes - amount;
+            const diferencia6Total = totalCon15Interes - amount;
+            
+            const costoExtra3Cuotas = diferencia3Total / 3;
+            const costoExtra6Cuotas = diferencia6Total / 6;
+
+            totalSinInteresElem.textContent = formatCurrency(amount);
+            document.getElementById('totalCon5Interes').textContent = formatCurrency(totalCon5Interes);
+            document.getElementById('cuotaCon5Interes').textContent = formatCurrency(cuotaCon5Interes);
+            document.getElementById('totalCon15Interes').textContent = formatCurrency(totalCon15Interes);
+            document.getElementById('cuotaCon15Interes').textContent = formatCurrency(cuotaCon15Interes);
+            document.getElementById('diferencia3Total').textContent = formatCurrency(diferencia3Total);
+            document.getElementById('diferencia6Total').textContent = formatCurrency(diferencia6Total);
+            
+            document.getElementById('costoExtra3Cuotas').textContent = formatCurrency(costoExtra3Cuotas);
+            document.getElementById('costoExtra6Cuotas').textContent = formatCurrency(costoExtra6Cuotas);
+            
+            document.getElementById('results').classList.add('show');
+        }
+    </script>
+</body>
+</html>
